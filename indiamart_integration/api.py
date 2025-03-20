@@ -106,61 +106,125 @@ def add_source_lead():
 	else:
 		frappe.msgprint(_("India Mart Lead Source Already Available"))
 
+# @frappe.whitelist()
+# def sync_india_mart_lead(from_date,to_date):
+# 	try:
+# 		india_mart_setting = frappe.get_doc("IndiaMart Setting","IndiaMart Setting")
+# 		if (not india_mart_setting.url
+# 			or not india_mart_setting.mobile_no
+# 			or not india_mart_setting.key):
+# 				frappe.throw(
+# 					msg=_('URL, Mobile, Key mandatory for Indiamart API Call. Please set them and try again.'),
+# 					title=_('Missing Setting Fields')
+# 				)
+		
+# 		req = get_request_url(india_mart_setting, from_date, to_date)
+		
+# 		res = requests.post(url=req)
+# 		if res.text:
+# 			count = 0
+# 			row =json.loads(res.text)
+			
+# 			if row["CODE"] == 200:
+				
+# 				leads_created = []
+# 				for i in row['RESPONSE']:
+# 					india_mart_id = i["UNIQUE_QUERY_ID"]
+# 					if not frappe.db.exists("Lead", {"india_mart_id": india_mart_id}):
+# 						lead = frappe.get_doc({
+# 							"doctype": "Lead",
+# 							"lead_name": i["SENDER_NAME"],
+# 							"email_id": i["SENDER_EMAIL"],
+# 							"phone": i["SENDER_MOBILE"],
+# 							"requirement": i["SUBJECT"],
+# 							"india_mart_id": india_mart_id,
+# 							"source": "India Mart",
+# 							"city":i["SENDER_CITY"],
+# 							"state":i["SENDER_STATE"],
+# 							"company_name":i["SENDER_COMPANY"],
+# 							"product_name":i["QUERY_PRODUCT_NAME"],
+# 							"description":i["QUERY_MESSAGE"],
+# 							"mcat_name":i["QUERY_MCAT_NAME"]
+# 						}).insert(ignore_permissions = True)
+# 						leads_created.append(lead)
+
+# 				if leads_created:
+# 					frappe.db.insert_many(leads_created)
+# 					count = len(leads_created)
+# 					frappe.msgprint(f"{count} Leads Created")
+# 			else:
+# 				frappe.throw(row["MESSAGE"])
+			
+# 			# if not count == 0:
+# 			# 	frappe.msgprint(_("{0} Lead Created").format(count))
+			
+
+# 	except Exception as e:
+# 		frappe.log_error(frappe.get_traceback(), _("India Mart Sync Error"))
+
+#updated code to sync lead - sukhman
+
 @frappe.whitelist()
 def sync_india_mart_lead(from_date,to_date):
-	try:
-		india_mart_setting = frappe.get_doc("IndiaMart Setting","IndiaMart Setting")
-		if (not india_mart_setting.url
-			or not india_mart_setting.mobile_no
-			or not india_mart_setting.key):
-				frappe.throw(
-					msg=_('URL, Mobile, Key mandatory for Indiamart API Call. Please set them and try again.'),
-					title=_('Missing Setting Fields')
-				)
-		
-		req = get_request_url(india_mart_setting, from_date, to_date)
-		
-		res = requests.post(url=req)
-		if res.text:
-			count = 0
-			row =json.loads(res.text)
-			
-			if row["CODE"] == 200:
-				
-				leads_created = []
-				for i in row['RESPONSE']:
-					india_mart_id = i["UNIQUE_QUERY_ID"]
-					if not frappe.db.exists("Lead", {"india_mart_id": india_mart_id}):
-						lead = frappe.get_doc({
-							"doctype": "Lead",
-							"lead_name": i["SENDER_NAME"],
-							"email_id": i["SENDER_EMAIL"],
-							"phone": i["SENDER_MOBILE"],
-							"requirement": i["SUBJECT"],
-							"india_mart_id": india_mart_id,
-							"source": "India Mart",
-							"city":i["SENDER_CITY"],
-							"state":i["SENDER_STATE"],
-							"company_name":i["SENDER_COMPANY"],
-							"product_name":i["QUERY_PRODUCT_NAME"],
-							"description":i["QUERY_MESSAGE"],
-							"mcat_name":i["QUERY_MCAT_NAME"]
-						}).insert(ignore_permissions = True)
-						leads_created.append(lead)
+    try:
+        india_mart_setting = frappe.get_doc("IndiaMart Setting","IndiaMart Setting")
+        if (not india_mart_setting.url
+            or not india_mart_setting.mobile_no
+            or not india_mart_setting.key):
+                frappe.throw(
+                    msg=_('URL, Mobile, Key mandatory for Indiamart API Call. Please set them and try again.'),
+                    title=_('Missing Setting Fields')
+                )
+        
+        req = get_request_url(india_mart_setting, from_date, to_date)
+        
+        res = requests.post(url=req)
+        if res.text:
+            count = 0
+            skipped = 0
+            row = json.loads(res.text)
+            
+            if row["CODE"] == 200:
+                
+                leads_created = []
+                for i in row['RESPONSE']:
+                    india_mart_id = i["UNIQUE_QUERY_ID"]
+                    email = i["SENDER_EMAIL"]
+                    # Skip if india_mart_id already exists OR email already exists
+                    if frappe.db.exists("Lead", {"india_mart_id": india_mart_id}) or (email and frappe.db.exists("Lead", {"email_id": email})):
+                        skipped += 1
+                        continue
+                        
+                    phone = i["SENDER_MOBILE"]
+                    if phone and phone.startswith("+91-"):
+                        phone = phone.replace("+91-", "", 1)
+                    elif phone and phone.startswith("+91"):
+                        phone = phone.replace("+91", "", 1)
+                    elif phone and phone.startswith("91"):
+                        phone = phone.replace("91", "", 1)
+                    
+                    lead = frappe.get_doc({
+                        "doctype": "Lead",
+                        "lead_name": i["SENDER_NAME"],
+                        "email_id": email,
+                        "phone": phone,
+                        "requirement": i["SUBJECT"],
+                        "india_mart_id": india_mart_id,
+                        "source": "India Mart",
+                        "city": i["SENDER_CITY"],
+                        "state": i["SENDER_STATE"],
+                        "company_name": i["SENDER_COMPANY"],
+                        "product_name": i["QUERY_PRODUCT_NAME"],
+                        "description": i["QUERY_MESSAGE"],
+                        "mcat_name": i["QUERY_MCAT_NAME"]
+                    }).insert(ignore_permissions = True)
+                    leads_created.append(lead)
+                    
+            else:
+                frappe.throw(row["MESSAGE"])
 
-				if leads_created:
-					frappe.db.insert_many(leads_created)
-					count = len(leads_created)
-					frappe.msgprint(f"{count} Leads Created")
-			else:
-				frappe.throw(row["MESSAGE"])
-			
-			# if not count == 0:
-			# 	frappe.msgprint(_("{0} Lead Created").format(count))
-			
-
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), _("India Mart Sync Error"))
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), _("India Mart Sync Error"))
 
 def get_request_url(india_mart_setting, from_date, to_date):
 		
