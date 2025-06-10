@@ -39,7 +39,7 @@ app_license = "MIT"
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 # Website user home page (by function)
@@ -55,7 +55,7 @@ app_license = "MIT"
 # ------------
 
 # before_install = "indiamart_integration.install.before_install"
-# after_install = "indiamart_integration.install.after_install"
+after_install = "indiamart_integration.install.after_install"
 
 # Desk Notifications
 # ------------------
@@ -84,7 +84,7 @@ app_license = "MIT"
 # 		"on_update": "method",
 # 		"on_cancel": "method",
 # 		"on_trash": "method"
-#	}
+# 	}
 # }
 
 # Scheduled Tasks
@@ -108,11 +108,7 @@ app_license = "MIT"
 # 	]
 # }
 scheduler_events = {
-	"cron": {
-       		"0/20 * * * *": [
-            		"indiamart_integration.api.cron_sync_lead"
-        		]
-		}
+    "cron": {"0/20 * * * *": ["indiamart_integration.api.cron_sync_lead"]}
 }
 # Testing
 # -------
@@ -132,4 +128,3 @@ scheduler_events = {
 # override_doctype_dashboards = {
 # 	"Task": "indiamart_integration.task.get_dashboard_data"
 # }
-
